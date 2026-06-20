@@ -1,0 +1,42 @@
+name: Deploy
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/main'
+    steps:
+      - uses: actions/checkout@v4
+
+      # Build images (extend with registry push as needed).
+      - name: Build backend image
+        run: docker build -f docker/backend.Dockerfile -t messenger-crm-backend:${{ github.sha }} .
+      - name: Build dashboard image
+        run: docker build -f docker/dashboard.Dockerfile -t messenger-crm-dashboard:${{ github.sha }} .
+
+      # Build the Chrome extension artifact for the Web Store.
+      - uses: pnpm/action-setup@v4
+        with: { version: 9 }
+      - uses: actions/setup-node@v4
+        with: { node-version: 20, cache: pnpm }
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm --filter @messenger/extension build
+      - uses: actions/upload-artifact@v4
+        with:
+          name: chrome-extension
+          path: apps/extension/dist
+
+      # Example deploy step (configure secrets + host):
+      # - name: Deploy over SSH
+      #   uses: appleboy/ssh-action@v1
+      #   with:
+      #     host: ${{ secrets.DEPLOY_HOST }}
+      #     username: ${{ secrets.DEPLOY_USER }}
+      #     key: ${{ secrets.DEPLOY_KEY }}
+      #     script: |
+      #       cd /srv/messenger-crm && git pull
+      #       docker compose -f docker-compose.prod.yml up -d --build
