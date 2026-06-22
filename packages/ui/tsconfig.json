@@ -1,4 +1,0 @@
-{
-  "extends": "@messenger/config/tsconfig/react-library",
-  "include": ["src"]
-}
